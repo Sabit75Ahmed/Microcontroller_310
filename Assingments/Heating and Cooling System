@@ -1,0 +1,139 @@
+//-----------------------------
+// Title: Developing Heating And Cooling System
+//-----------------------------
+// Purpose: It will measure a readng using tempsensor based on the reading it will compare it with a given input tempearture and then will decide to turn on Heating and Cooling System 
+// Dependencies: YES.
+// Compiler: MPLAB X IDE v6.20
+// Author: Sabit Ahmed 
+// OUTPUTS: Outputs of the program are defined as HEATER and COOLER and connected to PORTD 1,2 respectivley. 
+// INPUTS: INPUTs of the Program are KEYPAD and TEMPsensor. Keypad value is connected to register 20H and tempsensor value s connected to reg 21H
+// Versions:
+//  	V1.0: today?s date - 3/5/2024 
+//  	V1.2: date - 3/6/2024.
+
+;---------------------
+; Initialization
+;---------------------
+#include "C:\Assignments\Assignment4\myassign4.X\newconfig1.inc"
+#include <xc.inc>
+
+;---------------------
+; Program Inputs
+;---------------------
+measuredtemp	equ	   0 //decimal
+reftemp		equ	   15
+ 
+;---------------------
+; REGISTERS
+;---------------------
+reftempreg	  equ     20h   // in HEX
+measuredtempreg   equ     21h
+contreg	          equ     22h
+
+;---------------------
+; OUTPUTS
+;---------------------
+		  
+#define HEATER      PORTD,1
+#define COOLER	  PORTD,2
+
+;---------------------
+; Main Program
+;---------------------
+    PSECT absdata,abs,ovrld        ; Do not change
+    
+    ORG	0x20
+    ;-----------
+  ;Conversion for measured temp
+  ;-----------
+  nume	equ 0x30 ;numeratior has ram location 31h
+  myq	equ 0x31 ;Quoitient has ram location 32h
+  mynumb	equ  measuredtemp ;
+   myden	equ  10 ;
+
+	MOVLW	mynumb
+	MOVWF	nume ; wreg has the value of measuredtemp
+	MOVLW	myden
+	CLRF	myq ; clearing the quotient
+_D1:	INCF	myq,F ;increment quotient for every substraction 
+	SUBWF	nume,F ;substracting F-W ;nume-den
+	BC  _D1 ; if positive go back to increment 
+	ADDWF	nume,F ;adding myden and remainder
+	DECF	myq,F
+	MOVFF	nume,0x70
+	MOVFF	myq,0x71
+	
+    ;-----------
+    ;Conversion for reference temp
+    ;-----------
+	nume1	equ 0x40 ;numeratior has ram location 31h
+  myq1	equ 0x41 ;Quoitient has ram location 32h
+  mynumb1	equ  reftemp ;
+   myden1	equ  10 ;
+
+	MOVLW	mynumb1
+	MOVWF	nume1 ; wreg has the value of measuredtemp
+	MOVLW	myden1
+	CLRF	myq1 ; clearing the quotient
+_D2:	INCF	myq1,F ;increment quotient for every substraction 
+	SUBWF	nume1,F ;substracting F-W ;nume-den
+	BC  _D2 ; if positive go back to increment 
+	ADDWF	nume1,F ;adding myden1 and remainder
+	DECF	myq1,F
+	MOVFF	nume1,0x60;putting the lower byte to 0x60
+	MOVFF	myq1,0x61 ;putting the higher byte to 0x61
+    
+	
+	
+	
+	
+	
+	
+	
+	
+	;the code intializes the PORTD reg
+    BANKSEL	PORTD
+    CLRF	PORTD  ;init PORTD
+    BANKSEL	LATD ;DATA latch
+    CLRF        LATD
+    BANKSEL	ANSELD
+    CLRF	ANSELD ;digitl I/0
+    BANKSEL	TRISD
+    MOVLW	0b11111001
+    MOVWF	TRISD
+    
+    ;intializing Variable  
+    MOVLW    measuredtemp
+    MOVWF    measuredtempreg
+    MOVLW    reftemp
+    MOVWF    reftempreg
+    MOVF     measuredtempreg,W ;W=measuredtemp
+    SUBWF   reftempreg,W ;substracting reftemp value with the value of measuredtemp
+    BZ	    _END
+    BN	    _Cooler
+    BRA	    _Heater
+   
+ _END:
+    MOVLW   0x00
+    MOVWF   contreg
+_Here:	GOTO	_Here
+_Cooler:
+    MOVLW   0x02
+    MOVWF   contreg
+    BSF	    PORTD,2 ;setting the portD bit no 2 
+_Here1:	GOTO	_Here1
+
+_Heater:
+    MOVLW   0x01
+    MOVWF   contreg
+    BSF	    PORTD,1
+_Here2:	   GOTO	    _Here2
+    
+END
+    
+  
+	
+    
+    
+
+
