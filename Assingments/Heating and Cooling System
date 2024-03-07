@@ -60,8 +60,8 @@ _D1:	INCF	myq,F ;increment quotient for every substraction
 	BC  _D1 ; if positive go back to increment 
 	ADDWF	nume,F ;adding myden and remainder
 	DECF	myq,F
-	MOVFF	nume,0x70
-	MOVFF	myq,0x71
+	MOVFF	nume,0x70 ; Moving the adding value to reg 0x70
+	MOVFF	myq,0x71 ; moving the quotient to 0x71
 	
     ;-----------
     ;Conversion for reference temp
@@ -91,7 +91,7 @@ _D2:	INCF	myq1,F ;increment quotient for every substraction
 	
 	
 	
-	;the code intializes the PORTD reg
+	;the code intializes the PORTD reg SEE data sheet page on 260
     BANKSEL	PORTD
     CLRF	PORTD  ;init PORTD
     BANKSEL	LATD ;DATA latch
