@@ -1,0 +1,190 @@
+    //-----------------------------
+// Title: Counter USing A Keypad
+//-----------------------------
+// Purpose: The purpose of the program is to design a counter using a keypad
+    ;If I pressed the A key it will increment the count 0,1,2,...F
+    ;If I press the key B it will decrement the count F,E,..1,0
+    ;Pressing 3 will reset the counter.
+// Dependencies: It is required to include the
+;   AssemblyConfig.inc in the Header Folder
+// Compiler: MPLAB X IDE v6.20
+// Board : PIC18F47K42 Curiosity Nano Board
+// Author: Sabit Ahmed  
+// OUTPUTS: RB0,1,2 and RD0-RD7 
+// INPUTS: RB3,4,6,7
+// Versions:
+//  	V1.0: 03/27/2024 
+//  	V1.2: 03/28/2024
+//      V1.3: 03/30/2024
+//-----------------------------
+
+;---------------------
+; Initialization
+;---------------------
+#include "C:\Assignments\assignment6\mycounter.X\assemblyconfig.inc"
+#include <xc.inc>
+
+ ;----------------
+ ;Program Inputs
+ ;-------------
+    Inner_loop	equ 255 // in decimal
+    Outer_loop	equ  255
+    
+    
+    
+;---------------------
+; Program Constants
+;---------------------
+    
+    REG10   equ	10h // in hEX
+   REG11    equ	11h
+    
+;---------------------
+; Program Organization
+;---------------------
+    PSECT absdata,abs,ovrld        ; Do not change
+
+    ORG          0                ;Reset vector
+    GOTO        _setup
+
+    ORG          0020H           ; Begin assembly at 0020H
+    
+     ;---------------------
+; Setup & Main Program
+;---------------------   
+_setup:
+  
+;    clrf WREG
+    CALL _setupPortD
+    CALL _setupPortB
+    CALL _ssegzero ; intilize TBLPTR to display 0 in seven segment
+    clrf PORTB
+    
+_main:
+    clrf WREG
+    CALL _check_keypad
+    TSTFSZ  WREG,0 ; test wreg if its zero it will skip the keyfunction instruction
+    CALL _keyfunctions
+    GOTO    _main
+    
+;-------------------------------------
+; Call Functions
+;-------------------------------------
+_setupPortD:
+    BANKSEL	PORTD ;
+    CLRF	PORTD ;Init PORTA
+    BANKSEL	LATD ;Data Latch
+    CLRF	LATD ;
+    BANKSEL	ANSELD ;
+    CLRF	ANSELD ;digital I/O
+    BANKSEL	TRISD ;
+    MOVLW	0b00000000 ;Set RD[7:1] as outputs
+    MOVWF	TRISD ;and set RD0 as ouput
+    RETURN
+
+_setupPortB:
+    BANKSEL	PORTB ;
+    CLRF	PORTB ;Init PORTB
+    BANKSEL	LATB ;Data Latch
+    CLRF	LATB ;
+    BANKSEL	ANSELB ;
+    CLRF	ANSELB ;digital I/O
+    BANKSEL	TRISB ;
+    MOVLW	0b11111000 ;
+    MOVWF	TRISB ;
+    RETURN
+    
+_check_keypad:
+    BSF	PORTB,0 ; scan the first column of the key
+    BTFSC PORTB,3 ; has the key 1 been pressed? if yes then 
+    MOVLW  1 ; copy decimal number 1 into w reg. 
+    BCF	PORTB,0 ; finished scanning 1st column
+    
+    BSF	PORTB,1 ; scan the second column of the key
+    BTFSC PORTB,3 ; has the key 2 been pressed? if yes then 
+    MOVLW  2 ; copy decimal number 1 into w reg. 
+    BCF	PORTB,1 ; finished scanning 2nd column
+    
+    
+    BSF	PORTB,2 ; scan the third column of the key
+    BTFSC PORTB,3 ; has the key 2 been pressed? if yes then 
+    MOVLW  3 ; copy decimal number 1 into w reg. 
+    BCF	PORTB,2 ; finished scanning 3rd column
+    RETURN
+_keyfunctions:
+    ; this will take the output of wreg and substract it with literal value 2 and based on that will branch
+   SUBLW    2 
+   BN	_ssegzero ; L-W=(2-3)=-1 so goes to ssegzero
+   BZ	_decrement ;L-W=(2-2)=0 so goes to decrement subroutine
+   BRA	_increment ;L-W=(2-1)=1 so goes to increment subroutine
+ _ssegzero:
+    ;ORG 0x00200
+ ;I put the sseg common cathode look up table at org 0x00200
+ ;so below this code my tableptr looking at content of 0x00200 adress
+ ;program memory
+    MOVLW   0x00
+    MOVWF   TBLPTRU ,0 ; my upper address putting to table pointer upper
+    MOVLW   0x02
+    MOVWF   TBLPTRH,0 ; my higher address putting to table pointer higher
+    MOVLW   0x1 ; my  lower address putting to table pointer lower 
+    MOVWF   TBLPTRL,0
+    TBLRD*
+    MOVFF   TABLAT,PORTD ;after reading the tblptr it goes to tablelatch and from latch to PortD
+    CALL loopdelay
+    RETURN
+_ssegF:
+    MOVLW   0x00
+    MOVWF   TBLPTRU,0
+    MOVLW   0x2
+    MOVWF   TBLPTRH,0
+    MOVLW   0x10
+    MOVWF   TBLPTRL,0
+    TBLRD*
+    MOVFF   TABLAT,PORTD
+    CALL    loopdelay
+_decrement: 
+    DECF    TBLPTR  ; table pointer starts pointing from backward of program memory address 0x0200
+    TBLRD*
+    BTFSC   TABLAT,7,0
+    GOTO _ssegF   
+    MOVFF   TABLAT,PORTD
+    CALL loopdelay
+    RETURN
+  
+
+_increment: 
+
+   INCF    TBLPTR ; table pointer starts poinitng what 0x00200has and stops till 
+   TBLRD*
+   BTFSC   TABLAT ,7,0
+   GOTO	_ssegzero
+   MOVFF   TABLAT,PORTD
+   CALL loopdelay
+   RETURN
+    
+ ;the delay subroutine 
+loopdelay:
+    MOVLW Inner_loop  
+    MOVWF   REG10
+    MOVLW  Outer_loop
+    MOVWF   REG11
+_loop1:
+    DECF    REG10,1
+    BNZ	_loop1
+    NOP
+    NOP
+    NOP
+    NOP
+    MOVLW Inner_loop ; reintilize the innerloop loop when the outer loop decrements
+    MOVWF   REG10
+    DECF    REG11,1 
+    BNZ	_loop1
+    RETURN
+    
+ ; sseg decode for common cathode 0 to F  
+  ORG	0x00200
+ DB 0xFF,0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x7,0x7F,0x67,0x77,0x7C,0x39,0x5E,0x79,0x71,0xFF ; bookended with 0xFF so that when it reaches to F while increment it test 8 th bit if its clear ot will go to _ssegzero and when it goes to 0 while decreemnt it test bit 7 and if its clear it will go to F 
+END
+    
+
+
