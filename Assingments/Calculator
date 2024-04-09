@@ -1,0 +1,245 @@
+/*
+ Title: Designing a CALCULATOR  
+//-----------------------------
+// Purpose: The puporse of this project is, there will be 2 keys which
+ * will I press for the input and one key from the keypad for the operator
+ * it will take the 2 inputs and according to the operator it will show the result.
+// Dependencies: It is required to include the
+configfile.h in the Header Folder
+// Compiler: MPLAB X IDE v6.20
+// Board : PIC18F47K42 Curiosity Nano Board
+// Author: Sabit Ahmed  
+// OUTPUTS: RA0-RA3 and RD0-RD7 
+// INPUTS: RA4,5,6,7
+// Versions:
+//  	V1.0: 04/06/2024 
+//  	V1.2: 04/07/2024
+//      V1.3: 04/08/2024
+//     V1.3: 04/09/2024
+ */
+
+
+#include <xc.h>
+#include "configfile.h" 
+#include <stdio.h>
+#include <stdlib.h>
+
+
+#define _XTAL_FREQ 4000000            // Fosc  frequency for _delay()  library
+#define FCY    _XTAL_FREQ/4
+
+//sevensegmentlookup table
+const char seg_code[] = {0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x7,0x7F,0x67};
+// --------------------------
+// Function Declaration
+int check_keypad();
+void operator_fun ();
+void display_result();
+void _seconddigit();
+
+// -------------------------- 
+
+// --------------------------
+// Variables 
+int key ; //cannot initialize it with a function call outside main
+int input_1 ; //declare variable to store the input1
+int input_2; //declare variable to store input 2
+int operator;
+int result ;
+int operatorflag ; //declaring operator flag 
+
+// -------------------------- 
+
+// --------------------------
+
+
+
+// MAIN Function 
+// -------------------------- 
+void main(void) {
+    TRISA = 0b11110000; //4 inputs and 4 ouputs for keypad
+    ANSELA = 0b00000000 ; // making portA all digital
+    PORTA = 0b00000000 ; //initially everything in portA is 0 
+    
+    TRISB = 0b11111100 ; //portB 0 and 1 for output for controlling sseg
+    PORTB = 0b00000001 ; // to display first ones sseg
+    
+    TRISD = 0b00000000 ; //declaring PORTD all output 
+    PORTD = 0b00000000; //turns off PORTD output so sseg initially off
+    operatorflag=0;
+    while(1){
+        key = check_keypad(); //read keypad
+        if (key>-1){
+            
+        
+        if (key <=9){
+            //input_1 = key; i cant do it it resets the value 
+           if (operatorflag==0){
+                input_1 = key ;
+                PORTB = 0b00000001 ;
+                PORTD = seg_code[key] ;
+                __delay_ms(250);
+                
+           }
+           else {
+                input_2=key;
+                PORTB = 0b00000001 ;
+                PORTD = seg_code[key] ;
+                __delay_ms(250);
+           }
+        }
+        else {
+            operator_fun ();
+            PORTD = 0 ;
+        }
+        }
+      
+      }
+    
+}
+//subroutine 
+int check_keypad(){
+    PORTA = 0b00000001; //checking fist column
+    
+    if(PORTAbits.RA4 == 1){
+        return 1;
+    }
+    if(PORTAbits.RA5 == 1){
+        return 4 ; 
+    }
+    if(PORTAbits.RA6 == 1){
+        return 7 ; // FOR RA6 and RA7 turn off config bits FEXTOSC 
+    }
+    if (PORTAbits.RA7 == 1){
+        return 13; //for asterisk
+    }
+    PORTA = 0b00000010; //checking 2nd column
+    if(PORTAbits.RA4 == 1){
+        return 2;
+    }
+    if(PORTAbits.RA5 == 1){
+        return 5 ; 
+    }
+    if(PORTAbits.RA6 == 1){
+        return 8 ; // FOR RA6 and RA7 turn off config bits FEXTOSC 
+    }
+    if (PORTAbits.RA7 == 1){
+        return 0; //for 0
+    }
+    PORTA = 0b00000100; //checking 3rd column
+    if(PORTAbits.RA4 == 1){
+        return 3;
+    }
+    if(PORTAbits.RA5 == 1){
+        return 6 ; 
+    }
+    if(PORTAbits.RA6 == 1){
+        return 9 ; // FOR RA6 and RA7 turn off config bits FEXTOSC 
+    }
+    if (PORTAbits.RA7 == 1){
+        return 15; //for #
+    }
+    PORTA = 0b0001000; //checking 4th column
+    if(PORTAbits.RA4 == 1){
+        return 16; // A
+    }
+    if(PORTAbits.RA5 == 1){
+        return 17 ; //B
+    }
+    if(PORTAbits.RA6 == 1){
+        return 18 ; // FOR RA6 and RA7 turn off config bits FEXTOSC 
+    }
+    if (PORTAbits.RA7 == 1){
+        return 19; //for D
+    }
+    
+    return -1 ;//default return if no key is pressed
+}
+//subroutine for operator 
+void operator_fun (){
+    switch (key){
+        case 16 : //operator '+'
+            operatorflag=1; // 1 is for add
+                __delay_ms(10);
+            break;
+        case 17 : //operator '-'
+            operatorflag=2 ;
+              __delay_ms(10); 
+            break;
+        case 18 : //operator '*'
+            operatorflag=3 ;
+              __delay_ms(10); 
+            break;
+         case 19 : //operator '/'
+            operatorflag=4 ;
+              __delay_ms(10);
+              break;
+          case 13 : //displayresult
+              
+              display_result();
+              
+              __delay_ms(10);
+              operatorflag=0;
+              break;
+              
+    }
+    return;
+}
+
+//displayresult subroutine 
+ void display_result() {
+     
+     switch(operatorflag){
+         
+         case 1 : //add
+             result = input_1 + input_2;
+             
+             
+             break;
+         case 2: //substraction
+             result = input_1 - input_2;
+             
+             break;
+         case 3: //multiplication
+             result = input_1 * input_2;
+             
+             break;
+         case 4://division
+             result = input_1 / input_2;
+             
+             break;
+             
+     }
+     if(result>=10){
+         _seconddigit();
+      }
+     else{
+       (result<0)?(PORTD=seg_code[abs(result)]|0b10000000):(PORTD=seg_code[result]);  
+     }
+    //(result<0)?(PORTD=seg_code[abs(result)]|0b10000000):(PORTD=seg_code[result]);
+    
+     return;
+                       }
+ //_seconddigit
+ void _seconddigit(){
+     __delay_ms(400);
+     key = check_keypad();
+     while(key== -1){
+        key = check_keypad();
+        PORTB = 0b00000001 ; //PORTB RB0 is on
+        PORTD = seg_code[result%10]; //for ones digit
+    
+      __delay_ms(10); //a little delay to see the output
+      //PORTD = 0 ;
+       PORTB = 0b00000010 ; //PORTB RB1 is on
+       
+      PORTD =seg_code[result/10]  ; //tens digit
+      __delay_ms(10); //a little delay to see the output
+      
+        
+     }
+     PORTD = 0 ;
+     return;
+     
+ }
+                          
